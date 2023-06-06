@@ -2,31 +2,40 @@
   Имитатор модема
   Arduino Nano 328P old BootLoader - в vscode прошивается
   to github
+
+  v2 
+    добавлена отправка no carrier при молчании
+
 */
 
 #include "cvv_include.h";
 int count = 0;
 byte buf[1024];
 String cmd;
-bool ate0 = true;
+bool atEcho = true;
 int error = 0;
-bool Connected = false; //todo
 
-void setup() {
+bool Connected = false;
+int ConnectionLimitCount;
+int ConnectionLimit = 100; //при молчании 10c
+
+void setup() 
+{
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   delay(100);
   //sp("Run serial 9600 echo"); spn
-  sp("Run serial 9600 modem imitator v1\r\nSYSSTART^");
+  sp("Run serial 9600 modem imitator v2\r\nSYSSTART^");
   spn
-    digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);
   delay(50);  // wait for a second
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 int countplus = 0;
-void loop() { //as while()
-  delay(10);
+void loop() //as while()
+{ 
+  delay(100);
 
   //echo
   // if (Serial.available() > 0) {
@@ -37,25 +46,39 @@ void loop() { //as while()
   // count++; //  sp(count); sp_
   // digitalWrite(LED_BUILTIN, LOW);
 
-  
-  //modem
 
-  while (Serial.available() > 0) {
+  if (Connected)
+  {
+      if(--ConnectionLimitCount < 0)
+      {
+        Connected = false;
+         sp("\r\nNO CARRIER\r\n"); 
+      }
+  }
+
+  
+  while (Serial.available() > 0) 
+  {
     byte b = Serial.read();
-    ///if(ate0){ sp((char)(b)); } //echo
+    
 
     if (Connected)
     {
-      sp(b); //echo
+      ConnectionLimitCount = ConnectionLimit; //отсрочить
       if (b == '+')countplus++; else countplus = 0;
-      if (countplus >= 3){
+      if (countplus >= 3)
+      {
         Connected = false;
         sp("\r\nOK\r\n"); 
       }
+      sp("->"); sp((char)(b)); sp_ //echo
       continue;
     }
 
-    if (b == '\n') {
+    if(atEcho) sp((char)(b)); //echo
+
+    if (b == '\n') 
+    {
       buf[count] = 0;
       buf[count - 1] = 0;
       cmd = buf;
@@ -78,9 +101,10 @@ void loop() { //as while()
     delay(5);
   }
 
-  if (cmd.length() > 0) {
+  if (cmd.length() > 0) 
+  {
     // sp(cmd.length()); sp_
-    // if(ate0){ sp(cmd); spn } //echo
+    // if(atEcho){ sp(cmd); spn } //echo
 
     cmd.toLowerCase();
 
@@ -93,15 +117,15 @@ void loop() { //as while()
       delay(5555);
       sp("\r\nCONNECT 9600 RLP\r\n");
       Connected = true;
+      ConnectionLimitCount = ConnectionLimit;
     }
     else if(cmd == "ate0" || cmd == "atze0")
     {
-      ate0 = false; 
-      if(error > 0){error--; sp("\r\nQQate0\r\n");} else sp("\r\nOK\r\n");
+      atEcho = false; sp("\r\nOK\r\n");
     }
     else if(cmd == "ate1")
     {
-      ate0 = true; sp("\r\nOK\r\n");
+      atEcho = true; sp("\r\nOK\r\n");
     }
     else if(cmd == "at+creg?")
     {
