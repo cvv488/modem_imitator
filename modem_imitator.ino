@@ -1,152 +1,146 @@
 /*
   Имитатор модема
-  Arduino Nano 328P old BootLoader - в vscode прошивается
-  to github
+  Arduino Nano 328P old BootLoader - 
+  
+  vscode, github
+  прошивается в Arduino IDE, platformio не работает?
 
-  v2 
-    добавлена отправка no carrier при молчании
-
+    v2  добавлена отправка no carrier при молчании
+    v3  at+cbst
 */
 
 #include "cvv_include.h";
-int count = 0;
+#include "ek270.h";
+
+int countBuf = 0;
 byte buf[1024];
+bool bufDone = false;
+
 String cmd;
 bool atEcho = true;
 int error = 0;
 
 bool Connected = false;
 int ConnectionLimitCount;
-int ConnectionLimit = 100; //при молчании 10c
+int ConnectionLimit = 200; // при молчании 20c
 
-void setup() 
+int count = 0;
+
+void setup()
 {
-  Serial.begin(9600);
-  pinMode(LED_BUILTIN, OUTPUT);
-  delay(100);
-  //sp("Run serial 9600 echo"); spn
-  sp("Run serial 9600 modem imitator v2\r\nSYSSTART^");
-  spn
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(50);  // wait for a second
-  digitalWrite(LED_BUILTIN, LOW);
+    Serial.begin(9600);
+    pinMode(LED_BUILTIN, OUTPUT);
+    delay(100);
+    // sp("Run serial 9600 echo"); spn
+    sp("Run serial 9600 modem imitator v3 \r\nSYSSTART^");
+    spn
+        digitalWrite(LED_BUILTIN, HIGH);
+    delay(50); // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);
 }
 
 int countplus = 0;
-void loop() //as while()
-{ 
-  delay(100);
-
-  //echo
-  // if (Serial.available() > 0) {
-  //   digitalWrite(LED_BUILTIN, HIGH);
-  //   byte incomingByte = Serial.read();
-  //   Serial.print((char)incomingByte); sp("_"); //echo
-  // }
-  // count++; //  sp(count); sp_
-  // digitalWrite(LED_BUILTIN, LOW);
-
-
-  if (Connected)
-  {
-      if(--ConnectionLimitCount < 0)
-      {
-        Connected = false;
-         sp("\r\nNO CARRIER\r\n"); 
-      }
-  }
-
-  
-  while (Serial.available() > 0) 
-  {
-    byte b = Serial.read();
-    
+void loop() // as while()
+{
+    delay(100); count++;
 
     if (Connected)
     {
-      ConnectionLimitCount = ConnectionLimit; //отсрочить
-      if (b == '+')countplus++; else countplus = 0;
-      if (countplus >= 3)
-      {
-        Connected = false;
-        sp("\r\nOK\r\n"); 
-      }
-      sp("->"); sp((char)(b)); sp_ //echo
-      continue;
+        if (--ConnectionLimitCount < 0)
+        {
+            Connected = false;
+            sp("\r\nNO CARRIER\r\n");
+        }
+
+        if (bufDone)
+        {
+            // sp(" if (bufDone)");
+            bufDone = false;
+            io270(buf, countBuf);
+            countBuf = 0;
+        }
     }
 
-    if(atEcho) sp((char)(b)); //echo
-
-    if (b == '\n') 
+    while (Serial.available() > 0)
     {
-      buf[count] = 0;
-      buf[count - 1] = 0;
-      cmd = buf;
-      count = 0;
-      continue;
-    }
-    
-    //old rx +++
-    // if (b == '+'){
-    //   if (count >= 2 && (buf[count - 1] == '+') && (buf[count - 2] == '+'))
-    //   {
-    //     Connected = false;
-    //     sp("\r\nOK\r\n"); 
-    //     count = 0;
-    //     continue;
-    //   }
-    // }
+        byte b = Serial.read(); 
+        count = 0;
 
-    buf[count++] = b;
-    delay(5);
-  }
+        if (Connected)
+        {
+            ConnectionLimitCount = ConnectionLimit; // отсрочить
+            if (b == '+') countplus++;
+            else countplus = 0;
+            if (countplus >= 3)
+            {
+                Connected = false; sp("\r\nOK\r\n");
+                continue;
+            }
+//          sp("->"); sp((char)(b)); sp_ // echo
+        } else
+        {
+            if (atEcho) sp((char)(b)); // echo
 
-  if (cmd.length() > 0) 
-  {
-    // sp(cmd.length()); sp_
-    // if(atEcho){ sp(cmd); spn } //echo
+            if (b == '\n')
+            {
+                buf[countBuf] = 0;
+                buf[countBuf - 1] = 0;
+                cmd = String((char*)buf);
+                countBuf = 0;
+                continue;
+            }
+        }
 
-    cmd.toLowerCase();
+        buf[countBuf++] = b;
+        delay(5);
+    }
 
-    if(cmd == "at" || cmd == "atz" || cmd == "ath") // if (cmd == "AT" || cmd == "at")
+    if(count == 10)
     {
-      sp("\r\nOK\r\n"); // +++ без \n
+        bufDone = true; //sp(" bufDone = true;");
     }
-    else if(cmd.indexOf("atd") >= 0)
-    {
-      delay(5555);
-      sp("\r\nCONNECT 9600 RLP\r\n");
-      Connected = true;
-      ConnectionLimitCount = ConnectionLimit;
-    }
-    else if(cmd == "ate0" || cmd == "atze0")
-    {
-      atEcho = false; sp("\r\nOK\r\n");
-    }
-    else if(cmd == "ate1")
-    {
-      atEcho = true; sp("\r\nOK\r\n");
-    }
-    else if(cmd == "at+creg?")
-    {
-      sp("\r\nCREG: 0,1r\r\nOK\r\n");
-    }
-    else sp("\r\nERROR\r\n");
-    
-    // sp("\r\nOK\r\n");
-    cmd = "";
-  }
 
-  /*
-  char bb = 'a';
-  for(int n = 0; n < 10; n++)
-  {
-    sp(bb++);
-    // delay(10);
-  }
-   sp("\r\n");
-  // sp("-!");
-  delay(2000);
-  */
+    if (cmd.length() > 0)
+    {
+        // sp(cmd.length()); sp_
+        // if(atEcho){ sp(cmd); spn } //echo
+
+        cmd.toLowerCase();
+
+        if (cmd == "at" || cmd == "atz" || cmd == "ath") // if (cmd == "AT" || cmd == "at")
+        {
+            sp("\r\nOK\r\n"); // +++ без \n
+        }
+        else if (cmd.indexOf("atd") >= 0)
+        {
+            delay(3333);
+            sp("\r\nCONNECT 9600 RLP\r\n");
+            Connected = true;
+            ConnectionLimitCount = ConnectionLimit;
+        }
+        else if (cmd == "ate0" || cmd == "atze0")
+        {
+            atEcho = false;
+            sp("\r\nOK\r\n");
+        }
+        else if (cmd == "ate1")
+        {
+            atEcho = true;
+            sp("\r\nOK\r\n");
+        }
+        else if (cmd == "at+creg?")
+        {
+            sp("\r\nCREG: 0,1r\r\nOK\r\n");
+        }
+        else if (cmd.indexOf("at+") >= 0) //for AT+CBST=71 etc
+        {
+            sp("\r\nOK\r\n");
+        }
+        else
+            sp("\r\nERROR\r\n");
+
+        // sp("\r\nOK\r\n");
+        cmd = "";
+    }
 
 }
