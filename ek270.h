@@ -27,15 +27,25 @@ void io270(byte *buf, int len)
 
     if(buf[0] == 0) return;
 
+    String istr = String((char*)buf);
+
     if (buf[0] == 0x2f)
     {
-        Serial.print("/Els6EK270\r\n"); 
+        Serial.print("/Els6EK270\r\n");  //2F-45-6C-73-36-45-4B-32-37-30-0D-0A
         // Serial.print("/ELS5TC210\r\n"); 
     }
 
+    //ответ на <- .051.  |  06-30-35-31-0D-0A
     if (buf[0] == 6)
     {
         byte b[] = {0x01, 0x50, 0x30, 0x02, 0x28, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x29, 0x03, 0x50}; //->[15] P0(1234567)P 
+        Serial.write(b,sizeof(b));
+    }
+
+    //ответ на <-  R1 4:170.0() | 01-52-31-02-34-3A-31-37-30-2E-30-28-29-03-45
+    if (istr.indexOf("4:170") >= 0)
+     {
+        byte b[] = {0x02, 0x34, 0x3A, 0x31, 0x37, 0x30, 0x2E, 0x30, 0x28, 0x31, 0x29, 0x03, 0x15}; // 4:170.0(1)
         Serial.write(b,sizeof(b));
     }
 

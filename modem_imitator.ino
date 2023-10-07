@@ -28,11 +28,12 @@ int count = 0;
 
 void setup()
 {
+    //Serial.begin(115200);
     Serial.begin(9600);
     pinMode(LED_BUILTIN, OUTPUT);
     delay(100);
     // sp("Run serial 9600 echo"); spn
-    sp("Run serial 9600 modem imitator v3 \r\nSYSSTART^");
+    sp("Run serial 9600 modem imitator v4 \r\nSYSSTART^");
     spn
         digitalWrite(LED_BUILTIN, HIGH);
     delay(50); // wait for a second
@@ -114,8 +115,11 @@ void loop() // as while()
         else if (cmd.indexOf("atd") >= 0)
         {
             delay(3333);
-            sp("\r\nCONNECT 9600 RLP\r\n");
-            Connected = true;
+            //sp("\r\nCONNECT 9600 RLP\r\n");
+            //Connected = true;
+            
+            //or
+            sp("\r\nNO CARRIER\r\n");
             ConnectionLimitCount = ConnectionLimit;
         }
         else if (cmd == "ate0" || cmd == "atze0")
@@ -133,6 +137,14 @@ void loop() // as while()
             sp("\r\nCREG: 0,1r\r\nOK\r\n");
         }
         else if (cmd.indexOf("at+") >= 0) //for AT+CBST=71 etc
+        {
+            sp("\r\nOK\r\n");
+        }
+        else if (cmd.indexOf("at&") >= 0) //for AT&F etc
+        {
+            sp("\r\nOK\r\n");
+        }
+        else if (cmd.indexOf("ats") >= 0) //for AT&S etc
         {
             sp("\r\nOK\r\n");
         }
