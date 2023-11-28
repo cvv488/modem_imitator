@@ -7,6 +7,7 @@
 
     v2  добавлена отправка no carrier при молчании
     v3  at+cbst
+    v5  +connect try
 */
 
 #include "cvv_include.h";
@@ -21,9 +22,8 @@ bool atEcho = true;
 int error = 0;
 
 bool Connected = false;
-int ConnectionLimitCount;
-int ConnectionLimit = 200; // при молчании 20c
-
+int ConnectionLimitCount, ConnectionLimit = 200; //nc при молчании 20c
+int ConnectTry; //коннект с попытьки
 int count = 0;
 
 void setup()
@@ -33,7 +33,7 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
     delay(100);
     // sp("Run serial 9600 echo"); spn
-    sp("Run serial 9600 modem imitator v4 \r\nSYSSTART^");
+    sp("Run serial 9600 modem imitator v5 \r\nSYSSTART^");
     spn
         digitalWrite(LED_BUILTIN, HIGH);
     delay(50); // wait for a second
@@ -114,12 +114,18 @@ void loop() // as while()
         }
         else if (cmd.indexOf("atd") >= 0)
         {
-            delay(3333);
-            //sp("\r\nCONNECT 9600 RLP\r\n");
-            //Connected = true;
+            if(++ConnectTry < 2)
+            {
+                sp("\r\nNO CARRIER\r\n");
+            }
+            else
+            {
+                //delay(3333);
+                sp("\r\nCONNECT 9600 RLP\r\n");
+                Connected = true; ConnectTry = 0;
+            }
             
-            //or
-            sp("\r\nNO CARRIER\r\n");
+            
             ConnectionLimitCount = ConnectionLimit;
         }
         else if (cmd == "ate0" || cmd == "atze0")
